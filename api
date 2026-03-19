@@ -40,4 +40,53 @@ subtotal_gas = base_php_per_liter + refining_freight + industry_margin + gas_exc
 # VAT is 12% of the Subtotal
 final_retail_gas = subtotal_gas * 1.12 # PHP (₱) per liter
 
-print(f"Retail Gasoline Price: ₱{final_retail_gas:.2f}")
+# --- ADDITIVES (For Premium Fuels) ---
+premium_additive = 2.0
+diesel_additive = 1.5
+
+
+# --- CALCULATIONS ---
+
+# Unleaded
+subtotal_unleaded = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax
+final_unleaded = subtotal_unleaded * 1.12
+
+# Premium Gasoline
+subtotal_premium = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax + premium_additive
+final_premium = subtotal_premium * 1.12
+
+# Diesel
+subtotal_diesel = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax
+final_diesel = subtotal_diesel * 1.12
+
+# Premium Diesel
+subtotal_premium_diesel = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax + diesel_additive
+final_premium_diesel = subtotal_premium_diesel * 1.12
+
+# --- DISPLAY PRICES ---
+print("\n--- Fuel Prices per Liter ---")
+print(f"Unleaded Gasoline: ₱{final_unleaded:.2f}")
+print(f"Premium Gasoline: ₱{final_premium:.2f}")
+print(f"Diesel: ₱{final_diesel:.2f}")
+print(f"Premium Diesel: ₱{final_premium_diesel:.2f}")
+
+# --- USER INPUT ---
+fuel_type = input("\nSelect fuel type (Unleaded/Premium/Diesel/Premium Diesel): ").lower()
+liters = float(input("Enter number of liters: "))
+
+# --- CALCULATE TOTAL ---
+if fuel_type == "unleaded":
+    total = final_unleaded * liters
+elif fuel_type == "premium":
+    total = final_premium * liters
+elif fuel_type == "diesel":
+    total = final_diesel * liters
+elif fuel_type == "premium diesel":
+    total = final_premium_diesel * liters
+else:
+    print("Invalid fuel type!")
+    total = None
+
+# --- OUTPUT ---
+if total is not None:
+    print(f"\nTotal Cost: ₱{total:.2f}")
