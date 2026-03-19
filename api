@@ -59,12 +59,14 @@ def Final_Premium():
 
 # Diesel
 def Final_Diesel():
-    subtotal = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax
+    diesel_margin = industry_margin + 25  # adjust for inflation
+    subtotal = base_php_per_liter + refining_freight + diesel_margin + diesel_excise_tax
     return subtotal * 1.12
 
 # Premium Diesel
 def Final_Premium_Diesel():
-    subtotal = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax + diesel_additive
+    diesel_margin = industry_margin + 30  # same adjustment
+    subtotal = base_php_per_liter + refining_freight + diesel_margin + diesel_excise_tax + diesel_additive
     return subtotal * 1.12
 
 # --- CALCULATIONS USING FUNCTIONS ---
