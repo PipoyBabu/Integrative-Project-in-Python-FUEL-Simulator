@@ -72,21 +72,31 @@ print(f"Premium Diesel: ₱{final_premium_diesel:.2f}")
 
 # --- USER INPUT ---
 fuel_type = input("\nSelect fuel type (Unleaded/Premium/Diesel/Premium Diesel): ").lower()
-liters = float(input("Enter number of liters: "))
+payment = float(input("Enter amount of payment (PHP): "))
 
 # --- CALCULATE TOTAL ---
-if fuel_type == "unleaded":
-    total = final_unleaded * liters
-elif fuel_type == "premium":
-    total = final_premium * liters
-elif fuel_type == "diesel":
-    total = final_diesel * liters
-elif fuel_type == "premium diesel":
-    total = final_premium_diesel * liters
+if fuel_type in ["unleaded", "premium", "diesel", "premium diesel"]:
+    # 1. Determine the price based on selection
+    if fuel_type == "unleaded":
+        price = final_unleaded
+    elif fuel_type == "premium":
+        price = final_premium
+    elif fuel_type == "diesel":
+        price = final_diesel
+    else:
+        price = final_premium_diesel
+    
+    # 2. Logic: If you pay ₱500, the 'Total Cost' IS ₱500. 
+    # The 'Liters' is the variable result.
+    liters_received = payment / price
+    total_cost = payment  # Since you are paying a fixed amount
+    cash_change = 0.0     # In a ₱500-for-gas scenario
+    
+    # --- OUTPUT ---
+    print(f"\nFuel Price: ₱{price:.2f} per Liter")
+    print(f"Liters Pumped: {liters_received:.2f} L")
+    print(f"Total Charged: ₱{total_cost:.2f}")
+    if cash_change > 0:
+        print(f"Cash Change: ₱{cash_change:.2f}")
 else:
     print("Invalid fuel type!")
-    total = None
-
-# --- OUTPUT ---
-if total is not None:
-    print(f"\nTotal Cost: ₱{total:.2f}")
