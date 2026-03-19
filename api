@@ -1,0 +1,43 @@
+import kaggle
+import pandas as pd
+from urllib.request import urlopen
+import json
+
+url = 'https://www.floatrates.com/daily/usd.json'
+response = urlopen(url)
+data = json.loads(response.read())
+
+kaggle.api.authenticate()
+
+kaggle.api.dataset_download_files('lakshmi2305/crude-oil-brent-prices', path='.', unzip=True)
+
+df = pd.read_csv("crude_oil_brent.csv", parse_dates=["Date"])
+latest_row = df.loc[df["Date"].idxmax()]
+
+# --- INPUTS (Global Market) ---
+latest_price = float(latest_row["Price"])      # USD ($) per Barrel (Brent Crude)
+exchange_rate = data['php']['rate']     # PHP (₱) per 1 USD (March 2026 average)
+liters_per_barrel = 158.98 # Constant (Volume)
+
+# --- CONVERSION & LOCAL COSTS ---
+# Convert global USD price to local PHP per liter
+base_php_per_liter = (latest_price / liters_per_barrel) * exchange_rate # Result in PHP (₱)
+
+# Industry Costs in PHP (₱)
+# These represent shipping, refining, and the station's profit
+refining_freight = 6.0     # PHP (₱) per liter
+industry_margin = 7.0      # PHP (₱) per liter
+
+# --- TAXES (Philippine Law) ---
+# Excise Tax is a FIXED Peso amount under the TRAIN Law
+gas_excise_tax = 10.0      # PHP (₱) per liter
+diesel_excise_tax = 6.0    # PHP (₱) per liter
+
+# --- FINAL CALCULATION ---
+# Subtotal before 12% VAT
+subtotal_gas = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax
+
+# VAT is 12% of the Subtotal
+final_retail_gas = subtotal_gas * 1.12 # PHP (₱) per liter
+
+print(f"Retail Gasoline Price: ₱{final_retail_gas:.2f}")
