@@ -48,20 +48,30 @@ diesel_additive = 1.5
 # --- CALCULATIONS ---
 
 # Unleaded
-subtotal_unleaded = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax
-final_unleaded = subtotal_unleaded * 1.12
+def Final_Unleaded():
+    subtotal = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax
+    return subtotal* 1.12
 
 # Premium Gasoline
-subtotal_premium = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax + premium_additive
-final_premium = subtotal_premium * 1.12
+def Final_Premium():
+    subtotal = base_php_per_liter + refining_freight + industry_margin + gas_excise_tax + premium_additive
+    return subtotal * 1.12
 
 # Diesel
-subtotal_diesel = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax
-final_diesel = subtotal_diesel * 1.12
+def Final_Diesel():
+    subtotal = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax
+    return subtotal * 1.12
 
 # Premium Diesel
-subtotal_premium_diesel = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax + diesel_additive
-final_premium_diesel = subtotal_premium_diesel * 1.12
+def Final_Premium_Diesel():
+    subtotal = base_php_per_liter + refining_freight + industry_margin + diesel_excise_tax + diesel_additive
+    return subtotal * 1.12
+
+# --- CALCULATIONS USING FUNCTIONS ---
+final_unleaded = Final_Unleaded()
+final_premium = Final_Premium()
+final_diesel = Final_Diesel()
+final_premium_diesel = Final_Premium_Diesel()
 
 # --- DISPLAY PRICES ---
 print("\n--- Fuel Prices per Liter ---")
@@ -78,13 +88,13 @@ payment = float(input("Enter amount of payment (PHP): "))
 if fuel_type in ["unleaded", "premium", "diesel", "premium diesel"]:
     # 1. Determine the price based on selection
     if fuel_type == "unleaded":
-        price = final_unleaded
+        price = Final_Unleaded()
     elif fuel_type == "premium":
-        price = final_premium
+        price = Final_Premium()
     elif fuel_type == "diesel":
-        price = final_diesel
+        price = Final_Diesel()
     else:
-        price = final_premium_diesel
+        price = Final_Premium_Diesel()
     
     # 2. Logic: If you pay ₱500, the 'Total Cost' IS ₱500. 
     # The 'Liters' is the variable result.
