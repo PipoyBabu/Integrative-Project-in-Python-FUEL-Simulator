@@ -25,8 +25,8 @@ base_php_per_liter = (latest_price / liters_per_barrel) * exchange_rate # Result
 
 # Industry Costs in PHP (₱)
 # These represent shipping, refining, and the station's profit
-refining_freight = 6.0     # PHP (₱) per liter
-industry_margin = 7.0      # PHP (₱) per liter
+refining_freight = 15.0     # PHP (₱) per liter
+industry_margin = 9.0      # PHP (₱) per liter
 
 # --- TAXES (Philippine Law) ---
 # Excise Tax is a FIXED Peso amount under the TRAIN Law
