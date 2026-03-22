@@ -146,10 +146,19 @@ class App(ctk.CTk):
 
             dates, rates = get_exchange_history()
 
-            fig, ax = plt.subplots()
-            ax.plot(dates, rates)
-            ax.set_title("USD → PHP (30 days)")
-            ax.grid(True)
+            fig, ax = plt.subplots(figsize=(6, 4), dpi=100)
+            ax.plot(dates, rates, marker='o', color='#1f77b4', linewidth=2, markersize=5)
+            ax.set_title("USD → PHP (30 days)", fontsize=14, fontweight='bold')
+            ax.set_xlabel("Date", fontsize=11)
+            ax.set_ylabel("Exchange rate", fontsize=11)
+            ax.grid(True, linestyle='--', alpha=0.5)
+
+            # improve date formatting
+            ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+            ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%m-%d'))
+            fig.autofmt_xdate(rotation=45, ha='right')
+
+            fig.tight_layout(pad=1.2)
 
             canvas = FigureCanvasTkAgg(fig, master=graph_frame)
             canvas.draw()
