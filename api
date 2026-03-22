@@ -1,3 +1,9 @@
+import os
+# --- AUTHENTICATION ---
+# These MUST come before importing kaggle
+os.environ['KAGGLE_USERNAME'] = 'clarkbagtas' 
+os.environ['KAGGLE_KEY'] = '1ecea4daf61f63f382b331c9e4a6ddbe'
+
 import kaggle
 import pandas as pd
 from urllib.request import urlopen
@@ -84,11 +90,9 @@ print(f"Premium Diesel: ₱{final_premium_diesel:.2f}")
 
 # --- USER INPUT ---
 fuel_type = input("\nSelect fuel type (Unleaded/Premium/Diesel/Premium Diesel): ").lower()
-payment = float(input("Enter amount of payment (PHP): "))
 
-# --- CALCULATE TOTAL ---
 if fuel_type in ["unleaded", "premium", "diesel", "premium diesel"]:
-    # 1. Determine the price based on selection
+    # 1. Determine the price per liter
     if fuel_type == "unleaded":
         price = Final_Unleaded()
     elif fuel_type == "premium":
@@ -97,18 +101,35 @@ if fuel_type in ["unleaded", "premium", "diesel", "premium diesel"]:
         price = Final_Diesel()
     else:
         price = Final_Premium_Diesel()
-    
-    # 2. Logic: If you pay ₱500, the 'Total Cost' IS ₱500. 
-    # The 'Liters' is the variable result.
-    liters_received = payment / price
-    total_cost = payment  # Since you are paying a fixed amount
-    cash_change = 0.0     # In a ₱500-for-gas scenario
-    
-    # --- OUTPUT ---
-    print(f"\nFuel Price: ₱{price:.2f} per Liter")
-    print(f"Liters Pumped: {liters_received:.2f} L")
-    print(f"Total Charged: ₱{total_cost:.2f}")
-    if cash_change > 0:
-        print(f"Cash Change: ₱{cash_change:.2f}")
+
+    # 2. Ask for the Worth of gas and the actual Cash handed over
+    order_amount = float(input(f"How many Pesos worth of {fuel_type.title()}? ₱"))
+    cash_given = float(input("Enter Cash Amount handed to cashier: ₱"))
+
+    if cash_given >= order_amount:
+        # 3. Calculations
+        liters_pumped = order_amount / price
+        cash_change = cash_given - order_amount
+        vat_amount = order_amount - (order_amount / 1.12) # 12% VAT breakdown
+
+        # --- RECEIPT OUTPUT ---
+        print("\n" + "="*30)
+        print("       FUEL ORDER RECEIPT       ")
+        print("="*30)
+        print(f"Fuel Type:    {fuel_type.upper()}")
+        print(f"Price/Liter:  ₱{price:.2f}")
+        print(f"Volume:       {liters_pumped:.2f} L")
+        print("-" * 30)
+        print(f"TOTAL AMOUNT: ₱{order_amount:.2f}")
+        print(f"CASH PAID:    ₱{cash_given:.2f}")
+        print(f"CASH CHANGE:  ₱{cash_change:.2f}")
+        print("-" * 30)
+        print(f"Incl. 12% VAT:₱{vat_amount:.2f}")
+        print("="*30)
+        print("   Thank you! Come again!   ")
+        print("="*30)
+    else:
+        print(f"\nError: Insufficient cash. You need ₱{order_amount - cash_given:.2f} more.")
+
 else:
     print("Invalid fuel type!")
