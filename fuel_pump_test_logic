@@ -1,0 +1,211 @@
+import tkinter as tk
+from tkinter import ttk
+from enum import Enum
+import pandas as pd
+from urllib.request import urlopen
+import json
+import time
+import os
+import pandas as pd
+from urllib.request import urlopen
+import json
+
+# ----------------------------
+# DATA FETCHING & CALCULATIONS
+# ----------------------------
+# Note: Ensure your Kaggle credentials are correct or this part will fail
+os.environ['KAGGLE_USERNAME'] = 'clarkbagtas' 
+os.environ['KAGGLE_KEY'] = '1ecea4daf61f63f382b331c9e4a6ddbe'
+
+import kaggle
+
+def get_live_prices():
+    # Fetch Exchange Rate
+    url = 'https://www.floatrates.com/daily/usd.json'
+    response = urlopen(url)
+    data = json.loads(response.read())
+    exchange_rate = data['php']['rate']
+
+    # Fetch Oil Prices
+    kaggle.api.authenticate()
+    kaggle.api.dataset_download_files('lakshmi2305/crude-oil-brent-prices', path='.', unzip=True)
+    df = pd.read_csv("crude_oil_brent.csv", parse_dates=["Date"])
+    latest_price = float(df.loc[df["Date"].idxmax()]["Price"])
+
+    # Constants
+    liters_per_barrel = 158.98
+    refining_freight = 15.0
+    industry_margin = 9.0
+    gas_excise_tax = 10.0
+    diesel_excise_tax = 6.0
+    
+    base_php_per_liter = (latest_price / liters_per_barrel) * exchange_rate
+
+    # Price Functions
+    unleaded = (base_php_per_liter + refining_freight + industry_margin + gas_excise_tax) * 1.12
+    premium = (base_php_per_liter + refining_freight + industry_margin + gas_excise_tax + 2.0) * 1.12
+    diesel = (base_php_per_liter + refining_freight + (industry_margin + 25) + diesel_excise_tax) * 1.12
+    premium_diesel = (base_php_per_liter + refining_freight + (industry_margin + 30) + diesel_excise_tax + 1.5) * 1.12
+    
+    return {
+        "Unleaded": round(unleaded, 2),
+        "Premium": round(premium, 2),
+        "Diesel": round(diesel, 2),
+        "Premium Diesel": round(premium_diesel, 2)
+    }
+
+# ----------------------------
+# STATE MACHINE
+# ----------------------------
+class PumpState(Enum):
+    IDLE = 1
+    FUEL_SELECTED = 2
+    DISPENSING = 3
+    COMPLETED = 4
+
+class FuelTransaction:
+    def __init__(self, fuel_type, price_per_liter):
+        self.fuel_type = fuel_type
+        self.price_per_liter = price_per_liter
+        self.liters = 0.0
+        self.total_cost = 0.0
+
+class PumpController:
+    FLOW_RATE = 0.15 # Liters per tick for faster simulation
+    
+    def __init__(self):
+        self.state = PumpState.IDLE
+        self.liters = 0
+        self.total_cost = 0
+        self.target_amount = None
+        self.transaction = None
+
+    def select_fuel(self, fuel_type, price):
+        if self.state in [PumpState.IDLE, PumpState.COMPLETED]:
+            self.transaction = FuelTransaction(fuel_type, price)
+            self.state = PumpState.FUEL_SELECTED
+
+    def start_dispensing(self, target_amount=None):
+        if self.state == PumpState.FUEL_SELECTED:
+            self.state = PumpState.DISPENSING
+            self.target_amount = target_amount
+
+    def update_flow(self):
+        if self.state != PumpState.DISPENSING:
+            return
+        
+        self.transaction.liters += self.FLOW_RATE
+        self.transaction.total_cost = self.transaction.liters * self.transaction.price_per_liter
+        
+        if self.target_amount and self.transaction.total_cost >= self.target_amount:
+            self.transaction.total_cost = self.target_amount
+            self.transaction.liters = self.target_amount / self.transaction.price_per_liter
+            self.stop()
+
+    def stop(self):
+        if self.state == PumpState.DISPENSING:
+            self.state = PumpState.COMPLETED
+
+    def reset(self):
+        self.state = PumpState.IDLE
+        self.liters = 0
+        self.total_cost = 0
+        self.target_amount = None
+
+# ----------------------------
+# GUI
+# =========================
+class PumpGUI:
+    def __init__(self, root, live_prices):
+        self.root = root
+        self.root.title("PH Fuel Pump Simulator")
+        self.controller = PumpController()
+        self.live_prices = live_prices
+        self.create_widgets()
+        self.update_display()
+
+    def create_widgets(self):
+        self.price_vars = {}
+        ttk.Label(self.root, text="Fuel Type", font=('Arial', 10, 'bold')).grid(row=0, column=0, pady=5)
+        ttk.Label(self.root, text="Price/L (₱)", font=('Arial', 10, 'bold')).grid(row=0, column=1, pady=5)
+
+        row = 1
+        for fuel, price in self.live_prices.items():
+            self.price_vars[fuel] = tk.DoubleVar(value=price)
+            ttk.Button(self.root, text=fuel, width=15, 
+                       command=lambda f=fuel: self.select_fuel(f)).grid(row=row, column=0, padx=5, pady=2)
+            ttk.Entry(self.root, textvariable=self.price_vars[fuel], width=10).grid(row=row, column=1, padx=5)
+            row += 1
+
+        ttk.Label(self.root, text="Input Amount (₱):").grid(row=row, column=0, pady=10)
+        self.amount_entry = ttk.Entry(self.root)
+        self.amount_entry.grid(row=row, column=1)
+
+        btn_frame = ttk.Frame(self.root)
+        btn_frame.grid(row=row+1, column=0, columnspan=2, pady=10)
+        ttk.Button(btn_frame, text="START", command=self.start).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="STOP", command=self.stop).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="RESET", command=self.reset).pack(side=tk.LEFT, padx=5)
+
+        self.display = ttk.Label(self.root, text="", font=("Courier", 14), background="black", foreground="lime", padding=10)
+        self.display.grid(row=row+2, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+
+    def select_fuel(self, fuel):
+        price = self.price_vars[fuel].get()
+        self.controller.select_fuel(fuel, price)
+        self.update_display()
+
+    def start(self):
+        try:
+            amt_str = self.amount_entry.get()
+            target = float(amt_str) if amt_str else None
+            self.controller.start_dispensing(target)
+            self.run_flow()
+        except ValueError:
+            self.controller.start_dispensing(None)
+            self.run_flow()
+
+    def stop(self):
+        self.controller.stop()
+
+    def reset(self):
+        self.controller.reset()
+        self.amount_entry.delete(0, tk.END)
+        self.update_display()
+
+    def run_flow(self):
+        if self.controller.state == PumpState.DISPENSING:
+            self.controller.update_flow()
+            self.update_display()
+            self.root.after(100, self.run_flow)
+        else:
+            self.update_display()
+
+    def update_display(self):
+        tx = self.controller.transaction
+        if not tx:
+            self.display.config(text="WELCOME\nSELECT FUEL TO START")
+            return
+        
+        text = (
+            f"FUEL: {tx.fuel_type}\n"
+            f"PRICE: ₱{tx.price_per_liter:.2f}/L\n"
+            f"------------------\n"
+            f"LITERS: {tx.liters:.2f} L\n"
+            f"TOTAL : ₱{tx.total_cost:.2f}\n"
+            f"------------------\n"
+            f"STATUS: {self.controller.state.name}"
+        )
+        self.display.config(text=text)
+
+if __name__ == "__main__":
+    print("Fetching live market data...")
+    try:
+        current_prices = get_live_prices()
+    except Exception as e:
+        print(f"API Error: {e}. Using fallback prices.")
+        current_prices = {"Unleaded": 65.0, "Premium": 72.0, "Diesel": 60.0, "Premium Diesel": 68.0}
+    
+    root = tk.Tk()
+    app = PumpGUI(root, current_prices)
+    root.mainloop()
