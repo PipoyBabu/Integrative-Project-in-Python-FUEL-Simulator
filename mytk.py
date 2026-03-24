@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-ctk.set_appearance_mode("system")
+ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
 
 
@@ -49,7 +49,7 @@ class App(ctk.CTk):
 
         self.sidebar_visible = True
         self.dark_mode = ctk.StringVar(value="Light")
-        self.current_page = "Fuel Pump"
+        self.current_page = "Dashboard"
 
         self.colors = self.get_colors()
 
@@ -74,7 +74,7 @@ class App(ctk.CTk):
         self.content.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.build_sidebar()
-        self.show_page("Fuel Pump")
+        self.show_page("Dashboard")
 
     def hex_to_rgb(self, hex_color):
         hex_color = hex_color.lstrip("#")
@@ -183,55 +183,41 @@ class App(ctk.CTk):
                 text_color=self.colors["content_text"]
             ).pack(side="left", padx=20, pady=10)
 
-        df = pd.DataFrame({
-            "date": pd.date_range(start="2024-01-01", periods=10),
-            "users": [100,120,130,90,150,170,160,180,200,210],
-            "product": ["A","B","A","C","B","A","C","B","A","C"],
-            "sales": [10,20,15,5,25,30,10,22,18,9]
-        })
+        df = pd.read_csv("crude_oil_brent.csv", parse_dates=["Date"])
+        df = df.sort_values("Date")
 
-        selected_product = ctk.StringVar(value="All")
+        prices = get_prices()
+
+        selected_fuel = ctk.StringVar(value="All")
 
         def update_chart(choice):
-            filtered = df if choice == "All" else df[df["product"] == choice]
-
             for widget in chart_frame.winfo_children():
                 widget.destroy()
 
-            # ✅ FIXED LINE CHART
-            fig1, ax1 = plt.subplots(figsize=(5,4))
-            ax1.plot(filtered["date"], filtered["users"], marker='o')
-            ax1.set_title("Daily Active Users")
+            # Combined figure with two subplots stacked vertically to avoid overflow
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), constrained_layout=True)
+
+            # Line chart for oil prices
+            ax1.plot(df["Date"], df["Price"], marker='o', color='blue', linewidth=1)
+            ax1.set_title("Crude Oil Brent Prices Over Time")
             ax1.set_xlabel("Date")
-            ax1.set_ylabel("Users")
+            ax1.set_ylabel("Price (USD per Barrel)")
             ax1.tick_params(axis='x', rotation=45)
-            fig1.tight_layout()
 
-            canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame)
-            canvas1.draw()
-            canvas1.get_tk_widget().pack(side="left", fill="both", expand=True)
+            # Bar chart for current fuel prices
+            fuels = list(prices.keys())
+            fuel_prices = list(prices.values())
+            ax2.bar(fuels, fuel_prices, color=['green', 'red', 'blue'])
+            ax2.set_title("Current Fuel Prices")
+            ax2.set_xlabel("Fuel Type")
+            ax2.set_ylabel("Price (PHP per Liter)")
 
-            grouped = filtered.groupby("product")["sales"].sum()
+            # Set tight layout and max size reflow
+            fig.set_size_inches(10, 8)
 
-            # ✅ FIXED BAR CHART
-            fig2, ax2 = plt.subplots(figsize=(5,4))
-            ax2.bar(grouped.index, grouped.values)
-            ax2.set_title("Top Selling Products")
-            ax2.set_xlabel("Product")
-            ax2.set_ylabel("Sales")
-            fig2.tight_layout()
-
-            canvas2 = FigureCanvasTkAgg(fig2, master=chart_frame)
-            canvas2.draw()
-            canvas2.get_tk_widget().pack(side="left", fill="both", expand=True)
-
-        dropdown = ctk.CTkOptionMenu(
-            frame,
-            values=["All"] + list(df["product"].unique()),
-            variable=selected_product,
-            command=update_chart
-        )
-        dropdown.pack(pady=10)
+            canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
 
         chart_frame = ctk.CTkFrame(frame)
         chart_frame.pack(fill="both", expand=True)
