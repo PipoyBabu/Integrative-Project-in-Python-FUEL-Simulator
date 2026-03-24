@@ -4,8 +4,13 @@ import json
 import pandas as pd
 from PIL import Image
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("blue")
+
 
 LITERS_PER_BARREL = 158.98
 VAT_RATE = 0.12
@@ -48,11 +53,9 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # SIDEBAR
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#13389D")
         self.sidebar.grid(row=0, column=0, sticky="ns")
 
-        # MAIN
         self.main = ctk.CTkFrame(self, fg_color="#f3f4f6")
         self.main.grid(row=0, column=1, sticky="nsew")
 
@@ -63,13 +66,6 @@ class App(ctk.CTk):
             fg_color="transparent",
             command=self.toggle_sidebar
         ).pack(anchor="nw", padx=10, pady=10)
-
-        self.title_label = ctk.CTkLabel(
-            self.main,
-            text="Fuel Pump",
-            font=("Arial", 18, "bold")
-        )
-        self.title_label.pack(anchor="nw", padx=60, pady=10)
 
         self.content = ctk.CTkFrame(self.main, fg_color="transparent")
         self.content.pack(fill="both", expand=True, padx=10, pady=10)
@@ -127,11 +123,79 @@ class App(ctk.CTk):
     # DASHBOARD
     def create_dashboard_page(self):
         frame = ctk.CTkFrame(self.content)
-        ctk.CTkLabel(frame, text="Dashboard", font=("Arial", 24, "bold")).pack(pady=40)
-        ctk.CTkLabel(frame, text="Welcome to your dashboard").pack()
+
+        ctk.CTkLabel(frame, text="Dashboard", font=("Arial", 24, "bold")).pack(pady=10)
+
+        # ✅ ADDED OIL PRICES
+        prices = get_prices()
+        price_frame = ctk.CTkFrame(frame, fg_color="#e5e7eb")
+        price_frame.pack(pady=10, padx=10, fill="x")
+
+        for fuel, price in prices.items():
+            ctk.CTkLabel(
+                price_frame,
+                text=f"{fuel}: ₱{price}/L",
+                font=("Arial", 14, "bold")
+            ).pack(side="left", padx=20, pady=10)
+
+        df = pd.DataFrame({
+            "date": pd.date_range(start="2024-01-01", periods=10),
+            "users": [100,120,130,90,150,170,160,180,200,210],
+            "product": ["A","B","A","C","B","A","C","B","A","C"],
+            "sales": [10,20,15,5,25,30,10,22,18,9]
+        })
+
+        selected_product = ctk.StringVar(value="All")
+
+        def update_chart(choice):
+            filtered = df if choice == "All" else df[df["product"] == choice]
+
+            for widget in chart_frame.winfo_children():
+                widget.destroy()
+
+            # ✅ FIXED LINE CHART
+            fig1, ax1 = plt.subplots(figsize=(5,4))
+            ax1.plot(filtered["date"], filtered["users"], marker='o')
+            ax1.set_title("Daily Active Users")
+            ax1.set_xlabel("Date")
+            ax1.set_ylabel("Users")
+            ax1.tick_params(axis='x', rotation=45)
+            fig1.tight_layout()
+
+            canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame)
+            canvas1.draw()
+            canvas1.get_tk_widget().pack(side="left", fill="both", expand=True)
+
+            grouped = filtered.groupby("product")["sales"].sum()
+
+            # ✅ FIXED BAR CHART
+            fig2, ax2 = plt.subplots(figsize=(5,4))
+            ax2.bar(grouped.index, grouped.values)
+            ax2.set_title("Top Selling Products")
+            ax2.set_xlabel("Product")
+            ax2.set_ylabel("Sales")
+            fig2.tight_layout()
+
+            canvas2 = FigureCanvasTkAgg(fig2, master=chart_frame)
+            canvas2.draw()
+            canvas2.get_tk_widget().pack(side="left", fill="both", expand=True)
+
+        dropdown = ctk.CTkOptionMenu(
+            frame,
+            values=["All"] + list(df["product"].unique()),
+            variable=selected_product,
+            command=update_chart
+        )
+        dropdown.pack(pady=10)
+
+        chart_frame = ctk.CTkFrame(frame)
+        chart_frame.pack(fill="both", expand=True)
+
+        update_chart("All")
+
         return frame
 
-    # DELIVERY SCHEDULE (WORKING)
+    # DELIVERY SCHEDULE (UNCHANGED)
     def create_delivery_page(self):
         frame = ctk.CTkFrame(self.content)
 
@@ -175,7 +239,7 @@ class App(ctk.CTk):
 
         return frame
 
-    # SETTINGS
+    # SETTINGS (UNCHANGED)
     def create_settings_page(self):
         frame = ctk.CTkFrame(self.content)
 
@@ -195,7 +259,7 @@ class App(ctk.CTk):
     def change_appearance(self, mode):
         ctk.set_appearance_mode("dark" if mode == "Dark" else "light")
 
-    # FUEL PAGE
+    # FUEL PAGE (UNCHANGED)
     def create_fuel_page(self):
         frame = ctk.CTkFrame(self.content)
         frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -205,7 +269,6 @@ class App(ctk.CTk):
 
         data = get_prices()
 
-        # LEFT
         left = ctk.CTkFrame(frame, fg_color="#e5e7eb")
         left.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
@@ -251,7 +314,6 @@ class App(ctk.CTk):
 
         select_vehicle("Sedan")
 
-        # RIGHT
         right = ctk.CTkFrame(frame, fg_color="#f9fafb")
         right.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
