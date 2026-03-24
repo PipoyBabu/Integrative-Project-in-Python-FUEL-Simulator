@@ -49,14 +49,17 @@ class App(ctk.CTk):
 
         self.sidebar_visible = True
         self.dark_mode = ctk.StringVar(value="Light")
+        self.current_page = "Fuel Pump"
+
+        self.colors = self.get_colors()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#13389D")
+        self.sidebar = ctk.CTkFrame(self, width=200, fg_color=self.colors["sidebar_bg"])
         self.sidebar.grid(row=0, column=0, sticky="ns")
 
-        self.main = ctk.CTkFrame(self, fg_color="#f3f4f6")
+        self.main = ctk.CTkFrame(self, fg_color=self.colors["main_bg"])
         self.main.grid(row=0, column=1, sticky="nsew")
 
         ctk.CTkButton(
@@ -65,7 +68,7 @@ class App(ctk.CTk):
             width=40,
             fg_color="transparent",
             command=self.toggle_sidebar
-        ).pack(anchor="nw", padx=10, pady=10)
+        ).pack(anchor="nw", padx=12, pady=12)
 
         self.content = ctk.CTkFrame(self.main, fg_color="transparent")
         self.content.pack(fill="both", expand=True, padx=10, pady=10)
@@ -73,15 +76,55 @@ class App(ctk.CTk):
         self.build_sidebar()
         self.show_page("Fuel Pump")
 
+    def hex_to_rgb(self, hex_color):
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
+
+    def relative_luminance(self, rgb):
+        def channel(c):
+            if c <= 0.03928:
+                return c / 12.92
+            return ((c + 0.055) / 1.055) ** 2.4
+
+        return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+
+    def get_contrast_text_color(self, bg_color):
+        rgb = self.hex_to_rgb(bg_color)
+        lum = self.relative_luminance(rgb)
+        return "#000000" if lum > 0.50 else "#FFFFFF"
+
+    def get_colors(self):
+        mode = ctk.get_appearance_mode()
+        if mode == "Dark":
+            main_bg = "#1a1a1a"
+            sidebar_bg = "#2b2b2b"
+            content_bg = "#333333"
+            sidebar_text = "#FFFFFF"
+            content_text = "#FFFFFF"
+        else:
+            main_bg = "#f3f4f6"
+            sidebar_bg = "#13389D"
+            content_bg = "#e5e7eb"
+            sidebar_text = "#FFFFFF"
+            content_text = "#000000"
+
+        return {
+            "sidebar_bg": sidebar_bg,
+            "main_bg": main_bg,
+            "sidebar_text": sidebar_text,
+            "content_text": content_text,
+            "content_bg": content_bg
+        }
+
     def build_sidebar(self):
-        ctk.CTkLabel(self.sidebar, text="Seekseven", text_color="white").pack(pady=15)
+        ctk.CTkLabel(self.sidebar, text="Seekseven", text_color=self.colors["sidebar_text"]).pack(pady=15)
 
         for item in ["Dashboard", "Delivery Schedule", "Fuel Pump", "Settings"]:
             ctk.CTkButton(
                 self.sidebar,
                 text=item,
                 fg_color="transparent",
-                text_color="white",
+                text_color=self.colors["sidebar_text"],
                 command=lambda b=item: self.change_page(b)
             ).pack(fill="x", padx=20, pady=5)
 
@@ -91,10 +134,10 @@ class App(ctk.CTk):
             width=20,
             height=40,
             fg_color="transparent",
-            text_color="white",
+            text_color=self.colors["sidebar_text"],
             command=self.toggle_sidebar
         )
-        self.side_toggle.place(relx=1.0, rely=0.5, anchor="e")
+        self.side_toggle.place(relx=1.0, rely=0.5, anchor="e", x=-6)
 
     def toggle_sidebar(self):
         if self.sidebar_visible:
@@ -108,6 +151,7 @@ class App(ctk.CTk):
         self.show_page(name)
 
     def show_page(self, name):
+        self.current_page = name
         for w in self.content.winfo_children():
             w.destroy()
 
@@ -122,20 +166,21 @@ class App(ctk.CTk):
 
     # DASHBOARD
     def create_dashboard_page(self):
-        frame = ctk.CTkFrame(self.content)
+        frame = ctk.CTkFrame(self.content, fg_color=self.colors["main_bg"])
 
-        ctk.CTkLabel(frame, text="Dashboard", font=("Arial", 24, "bold")).pack(pady=10)
+        ctk.CTkLabel(frame, text="Dashboard", font=("Arial", 24, "bold"), text_color=self.colors["content_text"]).pack(pady=10)
 
         # ✅ ADDED OIL PRICES
         prices = get_prices()
-        price_frame = ctk.CTkFrame(frame, fg_color="#e5e7eb")
+        price_frame = ctk.CTkFrame(frame, fg_color=self.colors["content_bg"])
         price_frame.pack(pady=10, padx=10, fill="x")
 
         for fuel, price in prices.items():
             ctk.CTkLabel(
                 price_frame,
                 text=f"{fuel}: ₱{price}/L",
-                font=("Arial", 14, "bold")
+                font=("Arial", 14, "bold"),
+                text_color=self.colors["content_text"]
             ).pack(side="left", padx=20, pady=10)
 
         df = pd.DataFrame({
@@ -197,11 +242,11 @@ class App(ctk.CTk):
 
     # DELIVERY SCHEDULE (UNCHANGED)
     def create_delivery_page(self):
-        frame = ctk.CTkFrame(self.content)
+        frame = ctk.CTkFrame(self.content, fg_color=self.colors["main_bg"])
 
-        ctk.CTkLabel(frame, text="Delivery Schedule", font=("Arial", 24, "bold")).pack(pady=20)
+        ctk.CTkLabel(frame, text="Delivery Schedule", font=("Arial", 24, "bold"), text_color=self.colors["content_text"]).pack(pady=20)
 
-        date_entry = ctk.CTkEntry(frame, placeholder_text="Enter date (YYYY-MM-DD)")
+        date_entry = ctk.CTkEntry(frame, placeholder_text="Enter date (YYYY-MM-DD)", text_color=self.colors["content_text"])
         date_entry.pack(pady=10)
 
         schedule_list = ctk.CTkTextbox(frame, height=200, width=300)
@@ -241,10 +286,10 @@ class App(ctk.CTk):
 
     # SETTINGS (UNCHANGED)
     def create_settings_page(self):
-        frame = ctk.CTkFrame(self.content)
+        frame = ctk.CTkFrame(self.content, fg_color=self.colors["main_bg"])
 
-        ctk.CTkLabel(frame, text="Settings", font=("Arial", 24, "bold")).pack(pady=20)
-        ctk.CTkLabel(frame, text="Appearance Mode").pack(pady=10)
+        ctk.CTkLabel(frame, text="Settings", font=("Arial", 24, "bold"), text_color=self.colors["content_text"]).pack(pady=20)
+        ctk.CTkLabel(frame, text="Appearance Mode", text_color=self.colors["content_text"]).pack(pady=10)
 
         mode_menu = ctk.CTkOptionMenu(
             frame,
@@ -258,10 +303,19 @@ class App(ctk.CTk):
 
     def change_appearance(self, mode):
         ctk.set_appearance_mode("dark" if mode == "Dark" else "light")
+        self.colors = self.get_colors()
+        self.sidebar.configure(fg_color=self.colors["sidebar_bg"])
+        self.main.configure(fg_color=self.colors["main_bg"])
+        # Update sidebar labels and buttons
+        for widget in self.sidebar.winfo_children():
+            if isinstance(widget, ctk.CTkLabel) or isinstance(widget, ctk.CTkButton):
+                widget.configure(text_color=self.colors["sidebar_text"])
+        # Refresh the current page to update colors
+        self.show_page(self.current_page)
 
     # FUEL PAGE (UNCHANGED)
     def create_fuel_page(self):
-        frame = ctk.CTkFrame(self.content)
+        frame = ctk.CTkFrame(self.content, fg_color=self.colors["main_bg"])
         frame.pack(fill="both", expand=True, padx=20, pady=20)
 
         frame.grid_columnconfigure(0, weight=2)
@@ -269,15 +323,15 @@ class App(ctk.CTk):
 
         data = get_prices()
 
-        left = ctk.CTkFrame(frame, fg_color="#e5e7eb")
+        left = ctk.CTkFrame(frame, fg_color=self.colors["content_bg"])
         left.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        ctk.CTkLabel(left, text="Vehicle Preview", font=("Arial", 16, "bold")).pack(pady=10)
+        ctk.CTkLabel(left, text="Vehicle Preview", font=("Arial", 16, "bold"), text_color=self.colors["content_text"]).pack(pady=10)
 
-        vehicle_display = ctk.CTkLabel(left, text="Sedan", font=("Arial", 18, "bold"))
+        vehicle_display = ctk.CTkLabel(left, text="Sedan", font=("Arial", 18, "bold"), text_color=self.colors["content_text"])
         vehicle_display.pack(pady=10)
 
-        preview = ctk.CTkFrame(left, height=200, fg_color="white")
+        preview = ctk.CTkFrame(left, height=200, fg_color=self.colors["main_bg"])
         preview.pack(fill="x", padx=20, pady=10)
 
         self.vehicle_images = {
@@ -293,11 +347,65 @@ class App(ctk.CTk):
         vehicle_frame = ctk.CTkFrame(left, fg_color="transparent")
         vehicle_frame.pack(pady=10)
 
+        right = ctk.CTkFrame(frame, fg_color=self.colors["content_bg"])
+        right.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+        trivia_frame = ctk.CTkFrame(frame, fg_color=self.colors["content_bg"])
+        trivia_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=(10, 0))
+
+        self.trivia_label = ctk.CTkLabel(
+            trivia_frame,
+            text="",
+            wraplength=900,
+            justify="left",
+            text_color=self.colors["content_text"],
+            font=("Arial", 12)
+        )
+        self.trivia_label.pack(fill="x", pady=10, padx=10)
+
+        self.max_liters_label = ctk.CTkLabel(
+            trivia_frame,
+            text="",
+            text_color=self.colors["content_text"],
+            font=("Arial", 12, "bold")
+        )
+        self.max_liters_label.pack(fill="x", pady=(0, 5), padx=10)
+
+        self.remaining_label = ctk.CTkLabel(
+            trivia_frame,
+            text="",
+            text_color=self.colors["content_text"],
+            font=("Arial", 12)
+        )
+        self.remaining_label.pack(fill="x", pady=(0, 10), padx=10)
+
         vehicle_buttons = {}
 
+        trivia_by_vehicle = {
+            "Motorcycle": "Motorcycles usually have smaller tanks (12-18L), good for city riding and quick fill-ups.",
+            "Sedan": "Sedans average 45-55L; they balance fuel capacity and efficiency for daily commutes.",
+            "SUV": "SUVs often hold 60-75L since they carry more passengers and cargo on longer drives.",
+            "Truck": "Pickup trucks can be 100-150L; heavy loads and towing require larger tanks.",
+        }
+
+        max_liters_by_vehicle = {
+            "Motorcycle": 16.0,
+            "Sedan": 50.0,
+            "SUV": 70.0,
+            "Truck": 130.0,
+        }
+
+        state = {"running": False, "liters": 0, "price": 0, "target": 0, "max_liters": 0}
+
         def select_vehicle(name):
+            if state["running"]:
+                return
             vehicle_display.configure(text=name)
             preview_label.configure(image=self.vehicle_images[name])
+            self.trivia_label.configure(text=f"Trivia: {trivia_by_vehicle[name]}")
+            self.max_liters = max_liters_by_vehicle[name]
+            self.max_liters_label.configure(text=f"Max capacity: {self.max_liters:.1f} L")
+            self.remaining_label.configure(text=f"Max liters remaining: {self.max_liters:.1f} L")
             for v, btn in vehicle_buttons.items():
                 btn.configure(fg_color="#2563eb" if v == name else "gray")
 
@@ -309,56 +417,68 @@ class App(ctk.CTk):
                 fg_color="gray",
                 command=lambda x=v: select_vehicle(x)
             )
-            btn.pack(side="left", padx=5)
+            btn.pack(side="left", padx=8, pady=6)
             vehicle_buttons[v] = btn
 
         select_vehicle("Sedan")
 
-        right = ctk.CTkFrame(frame, fg_color="#f9fafb")
-        right.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-
         selected = ctk.StringVar(value="Unleaded")
 
-        ctk.CTkLabel(right, text="Fuel Type").pack(pady=5)
+        ctk.CTkLabel(right, text="Fuel Type", text_color=self.colors["content_text"]).pack(pady=5)
 
         for fuel, price in data.items():
             ctk.CTkRadioButton(
                 right,
                 text=f"{fuel} ₱{price}/L",
                 variable=selected,
-                value=fuel
+                value=fuel,
+                text_color=self.colors["content_text"]
             ).pack(anchor="w", padx=10)
 
-        entry = ctk.CTkEntry(right, placeholder_text="Enter amount (₱)")
+        entry = ctk.CTkEntry(right, placeholder_text="Enter amount (₱)", text_color=self.colors["content_text"])
         entry.pack(pady=10)
 
-        display = ctk.CTkLabel(right, text="0.00 L\n₱0.00", font=("Arial", 18, "bold"))
+        display = ctk.CTkLabel(right, text="0.00 L\n₱0.00", font=("Arial", 18, "bold"), text_color=self.colors["content_text"])
         display.pack(pady=15)
 
-        state = {"running": False, "liters": 0, "price": 0, "target": 0}
+        state = {"running": False, "liters": 0, "price": 0, "target": 0, "max_liters": 0}
 
-        self.start_btn = ctk.CTkButton(right, text="Start Pump")
+        self.start_btn = ctk.CTkButton(right, text="Start Pump", text_color=self.colors["content_text"])
         self.start_btn.pack(pady=5)
 
-        self.stop_btn = ctk.CTkButton(right, text="Stop")
+        self.stop_btn = ctk.CTkButton(right, text="Stop", text_color=self.colors["content_text"])
         self.stop_btn.pack(pady=5)
 
-        self.reset_btn = ctk.CTkButton(right, text="Reset")
+        self.reset_btn = ctk.CTkButton(right, text="Reset", text_color=self.colors["content_text"])
         self.reset_btn.pack(pady=5)
 
         def start():
             try:
                 state["price"] = data[selected.get()]
-                state["target"] = float(entry.get())
+                money_target = float(entry.get())
                 state["liters"] = 0
                 state["running"] = True
+                state["max_liters"] = getattr(self, "max_liters", 0)
+
+                if state["max_liters"] <= 0:
+                    display.configure(text="Select a vehicle first")
+                    state["running"] = False
+                    return
+
+                max_money = state["max_liters"] * state["price"]
+                if money_target > max_money:
+                    state["target"] = max_money
+                else:
+                    state["target"] = money_target
 
                 self.start_btn.configure(fg_color="green")
                 self.stop_btn.configure(fg_color="#3b82f6")
                 self.reset_btn.configure(fg_color="#3b82f6")
+                for btn in vehicle_buttons.values():
+                    btn.configure(state="disabled")
 
                 pump_loop()
-            except:
+            except ValueError:
                 display.configure(text="Invalid input")
 
         def stop():
@@ -366,15 +486,20 @@ class App(ctk.CTk):
             self.stop_btn.configure(fg_color="red")
             self.start_btn.configure(fg_color="#3b82f6")
             self.reset_btn.configure(fg_color="#3b82f6")
+            for btn in vehicle_buttons.values():
+                btn.configure(state="normal")
 
         def reset():
             state["running"] = False
             state["liters"] = 0
             display.configure(text="0.00 L\n₱0.00")
+            self.remaining_label.configure(text=f"Max liters remaining: {state['max_liters']:.1f} L")
 
             self.reset_btn.configure(fg_color="orange")
             self.start_btn.configure(fg_color="#3b82f6")
             self.stop_btn.configure(fg_color="#3b82f6")
+            for btn in vehicle_buttons.values():
+                btn.configure(state="normal")
 
         self.start_btn.configure(command=start)
         self.stop_btn.configure(command=stop)
@@ -385,6 +510,10 @@ class App(ctk.CTk):
                 return
 
             state["liters"] += 0.05
+            if state["liters"] >= state["max_liters"]:
+                state["liters"] = state["max_liters"]
+                state["running"] = False
+
             total = state["liters"] * state["price"]
 
             if total >= state["target"]:
@@ -392,10 +521,23 @@ class App(ctk.CTk):
                 state["liters"] = total / state["price"]
                 state["running"] = False
 
+            if state["liters"] >= state["max_liters"]:
+                state["running"] = False
+
+            remaining = max(0, state["max_liters"] - state["liters"])
+            self.remaining_label.configure(text=f"Max liters remaining: {remaining:.2f} L")
+
             display.configure(text=f"{state['liters']:.2f} L\n₱{total:.2f}")
 
-            if state["running"]:
-                frame.after(80, pump_loop)
+            if not state["running"]:
+                if state['liters'] >= state['max_liters']:
+                    display.configure(text=f"{state['liters']:.2f} L\n₱{total:.2f}")
+                    self.remaining_label.configure(text="Max capacity reached")
+                for btn in vehicle_buttons.values():
+                    btn.configure(state="normal")
+                return
+
+            frame.after(80, pump_loop)
 
         return frame
 
